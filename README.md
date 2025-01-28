@@ -1,4 +1,4 @@
-# pico-apps
+# pico-apps Ruairi Mullally
 
 Template code repository for the Raspberry Pi Pico used for the CSU23021 course for the Spring semester 2022/2023, 2023/2024, 2024/2025, and so on. Students should clone this repository to their own Git area and use it as the basis to complete their assignments and labs throughout the year.
 
