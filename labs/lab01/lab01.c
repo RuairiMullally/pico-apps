@@ -2,11 +2,12 @@
 
 
 /**
-  * @brief Cyclically turns on and off a specified LED
-  *        for a specified time.
-  *
-  * @return none
-  */
+ * @brief Cyclically turn on and off specified LED for
+ *        a specified time.
+ * 
+ * @param LED_PIN 
+ * @param LED_DELAY 
+ */
 void toggle_LED(const uint LED_PIN, const uint LED_DELAY){
     static bool LED_state = 0;
 
@@ -19,13 +20,12 @@ void toggle_LED(const uint LED_PIN, const uint LED_DELAY){
 
 }
 
-
 /**
  * @brief BLINK_C
  *        Initialise the built-in LED on
- *        the Raspberry Pi Pico and then flash it forever. 
+ *        the Raspberry Pi Pico and then flash it forever.
  * 
- * @return int  Application return code (zero for success).
+ * @return int 
  */
 int main() {
 
