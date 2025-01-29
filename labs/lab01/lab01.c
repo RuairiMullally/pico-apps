@@ -21,8 +21,8 @@ void toggle_LED(const uint LED_PIN, const uint LED_DELAY){
 
 
 /**
- * @brief EXAMPLE - BLINK_C
- *        Simple example to initialise the built-in LED on
+ * @brief BLINK_C
+ *        Initialise the built-in LED on
  *        the Raspberry Pi Pico and then flash it forever. 
  * 
  * @return int  Application return code (zero for success).
