@@ -13,8 +13,10 @@ float wallisProductFloat(int iterations);
 double wallisProductDouble(int iterations);
 
 /**
- * @brief LAB #02 - TEMPLATE
- *        Main entry point for the code.
+ * @brief LAB #02
+ *        Computes PI using double and float variations of Wallis
+ *        products, showing the % error between the defined and 
+ *        calculated PI.
  * 
  * @return int      Returns exit-status zero on completion.
  */
@@ -39,7 +41,12 @@ int main() {
 }
 
 
-
+/**
+ * @brief Calculates the Wallis product using a _float_ for i iterations.
+ * 
+ * @param iterations 
+ * @return float 
+ */
 float wallisProductFloat(int iterations){
     float pi_float = 1;
 
@@ -51,7 +58,12 @@ float wallisProductFloat(int iterations){
     return pi_float * 2;
 }
 
-
+/**
+ * @brief Calculates the Wallis product using a _double_ for i iterations.
+ * 
+ * @param iterations 
+ * @return double 
+ */
 double wallisProductDouble(int iterations){
     double pi_double = 1;
 
