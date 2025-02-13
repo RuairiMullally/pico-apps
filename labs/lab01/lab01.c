@@ -1,5 +1,5 @@
 #include "pico/stdlib.h"
-
+#include <stdio.h>
 
 /**
  * @brief Toggle a specified LED for a specified time.
@@ -35,9 +35,12 @@ int main() {
     gpio_init(LED_PIN);
     gpio_set_dir(LED_PIN, GPIO_OUT);
 
+    stdio_init_all();
+
     // Infinitely toggle LED.
     while (true) {
       toggle_LED(LED_PIN, LED_DELAY);
+      printf("Blinking!\n");
     }
     
     // Should never get here due to infinite while-loop.

@@ -1,8 +1,8 @@
 # pico-apps Ruairi Mullally
 
-Template code repository for the Raspberry Pi Pico used for the CSU23021 course.
-
 This repository is set up for use with Visual Studio Code, CMAKE and Doxygen. All build collateral output will be generated under the "build" folder and all Doxygen-generated documentation will be generated under the "docs" folder. The repository is structured as follows.
+
+[Pi Pico SDK Documentation.](https://www.raspberrypi.com/documentation/pico-sdk/index_doxygen.html)
 
 ## assignments
 
