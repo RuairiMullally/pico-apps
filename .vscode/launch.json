@@ -15,7 +15,7 @@
                 "interface/cmsis-dap.cfg",
                 "target/${command:raspberry-pi-pico.getTarget}.cfg"
             ],
-            "svdFile": "${userHome}/.pico-sdk/sdk/1.5.1/src/${command:raspberry-pi-pico.getChip}/hardware_regs/${command:raspberry-pi-pico.getChipUppercase}.svd",
+            "svdFile": "${userHome}/.pico-sdk/sdk/2.1.0/src/${command:raspberry-pi-pico.getChip}/hardware_regs/${command:raspberry-pi-pico.getChipUppercase}.svd",
             "runToEntryPoint": "main",
             // Fix for no_flash binaries, where monitor reset halt doesn't do what is expected
             // Also works fine for flash binaries
@@ -37,7 +37,7 @@
             "gdbTarget": "localhost:3333",
             "gdbPath": "${command:raspberry-pi-pico.getGDBPath}",
             "device": "${command:raspberry-pi-pico.getChipUppercase}",
-            "svdFile": "${userHome}/.pico-sdk/sdk/1.5.1/src/${command:raspberry-pi-pico.getChip}/hardware_regs/${command:raspberry-pi-pico.getChipUppercase}.svd",
+            "svdFile": "${userHome}/.pico-sdk/sdk/2.1.0/src/${command:raspberry-pi-pico.getChip}/hardware_regs/${command:raspberry-pi-pico.getChipUppercase}.svd",
             "runToEntryPoint": "main",
             // Fix for no_flash binaries, where monitor reset halt doesn't do what is expected
             // Also works fine for flash binaries
@@ -64,7 +64,30 @@
                 "limit": 4
             },
             "preLaunchTask": "Flash",
-            "svdPath": "${userHome}/.pico-sdk/sdk/1.5.1/src/${command:raspberry-pi-pico.getChip}/hardware_regs/${command:raspberry-pi-pico.getChipUppercase}.svd"
+            "svdPath": "${userHome}/.pico-sdk/sdk/2.1.0/src/${command:raspberry-pi-pico.getChip}/hardware_regs/${command:raspberry-pi-pico.getChipUppercase}.svd"
         },
+        {
+            "name": "Pico Debug",
+            "cwd": "${workspaceRoot}",
+            "executable": "${command:cmake.launchTargetPath}",
+            "request": "launch",
+            "type": "cortex-debug",
+            "servertype": "openocd",
+            // This may need to be arm-none-eabi-gdb depending on your system
+            "gdbPath" : "arm-none-eabi-gdb",
+            "device": "RP2040",
+            "configFiles": [
+                "interface/picoprobe.cfg",
+                "target/rp2040.cfg"
+            ],
+            "svdFile": "${env:PICO_SDK_PATH}/src/rp2040/hardware_regs/rp2040.svd",
+            "runToMain": true,
+            // Work around for stopping at main on restart
+            "postRestartCommands": [
+                "break main",
+                "continue"
+            ],
+            "searchDir": ["C:/Users/ruair/OneDrive/Documents/TCD Year 3/S2/Microprocessor Systems II/microprocessor-sys-2-pico-apps/Raspberry Pi Pico/openocd-branch-rp2040-f8w14ec-windows/tcl"],
+        }
     ]
 }
