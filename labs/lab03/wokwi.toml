@@ -1,0 +1,4 @@
+[wokwi]
+version = 1
+firmware = '..\..\build\labs\lab03\lab03.hex'
+elf = '..\..\build\labs\lab03\lab03.elf'
