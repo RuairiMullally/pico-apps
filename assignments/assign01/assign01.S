@@ -37,14 +37,16 @@ main_asm:
 
         bl      init_LED
         bl      init_buttons
+        bl      register_GPIO_isr_handler
 main_loop:
+        wfi
         b       main_loop
 
 init_LED:
         push    {lr}
-        movs    r0, #LED_GPIO_PIN           @ Initialize LED GPIO pin PIN 25
+        movs    r0, #GPIO_LED_PIN           @ Initialize LED GPIO pin PIN 25
         bl      asm_gpio_init               
-        movs    r0, #LED_GPIO_PIN           
+        movs    r0, #GPIO_LED_PIN          
         movs    r1, #GPIO_DIR_OUT           @OUT           
         bl      asm_gpio_set_dir
         pop     {pc}
@@ -72,6 +74,41 @@ init_buttons:
 
         pop {pc}                           @ Back to main
 
+
+register_GPIO_isr_handler:
+        push {r0, r1, r2}                      @ save registers
+
+        //store button_isr_handler address in the vector table at offset 0x74
+        ldr r0, =button_isr_handler
+        ldr r1, =PPB_BASE                   @ PPB_BASE is the is where the vector table base address is stored (private poeripheral bus)
+
+        ldr r2, =M0PLUS_VTOR_OFFSET         @ Load VTOR offset
+        ldr r2, [r1, r2]
+        ldr r3, =GPIO_ISR_OFFSET            @ 29 x 4
+        add r2, r2, r3
+        str r0, [r2]
+        //this stores the address of the button_isr_handler at PPB_BASE + VTOR_OFFSET (get to programmable excpetions)
+        // + GPIO interrupt location (0x74)
+
+        //enable the button_isr_handler by setting the Nested Vectored Interrupt Controller (NVIC)
+        //which controls which interrputs are enabled
+        ldr r0, =1                              @ 1 for enable
+        lsls r0, #13                            @  13 IO_IRQ_BANK0 (position of IO enable bank)
+        ldr r2, =M0PLUS_NVIC_ICPR_OFFSET
+        ldr r2, [r1, r2]
+        str r0, [r2]                            @ clear existing interrupts
+        ldr r2, =M0PLUS_NVIC_ISER_OFFSET
+        ldr r2, [r1, r2]
+        str r0, [r2]                            @ Interrupt Set Enable Register
+        
+        pop {r0, r1, r2}                        @ restore registers
+        bx lr                                   @ return
+
+button_isr_handler:
+
+        ldr       r0, =msg             // enter button pressed message
+        bl        printf
+        
 
 .align 4
 msg:                .asciz "Hello World!\n"
