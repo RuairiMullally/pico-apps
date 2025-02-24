@@ -33,17 +33,18 @@
 
 @ Entry point to the ASM portion of the program
 main_asm:
-        ldr     r0, =msg
+        ldr     r0, =msg_start
         bl      printf
 
-        bl      init_LED
+        bl      init_LED                        
         bl      init_buttons
+
         bl      register_GPIO_isr_handler
+        bl      register_alarm_isr_handler
 main_loop:
                                                          
-        bl      sub_toggle
-        movs    r0, #100
-        bl      sleep_ms                    @ Sleep for 100ms to allow button to travel back.
+        bl      set_alarm_params 
+        wfi
         b       main_loop
 
 init_LED:
@@ -78,17 +79,17 @@ init_buttons:
 
         pop {pc}                           @ Back to main
 
-
+//============================================================================================================================================
 register_GPIO_isr_handler:
         push {r0, r1, r2}                      @ save registers
 
         //store button_isr_handler address in the vector table at offset 0x74
         ldr r0, =button_isr_handler
-        ldr r1, =PPB_BASE                   @ PPB_BASE is the is where the vector table base address is stored (private poeripheral bus)
+        ldr r1, =PPB_BASE                   @ PPB_BASE is the is where the vector table base address is stored (private peripheral bus)
 
         ldr r2, =M0PLUS_VTOR_OFFSET         @ Load VTOR offset
         ldr r2, [r1, r2]
-        ldr r3, =GPIO_ISR_OFFSET            @ 29 x 4
+        ldr r3, =GPIO_ISR_OFFSET            @ 29 x 4 = 116
         add r2, r2, r3
         str r0, [r2]
         //this stores the address of the button_isr_handler at PPB_BASE + VTOR_OFFSET (get to programmable exceptions)
@@ -138,6 +139,8 @@ button_isr_handler:
         beq       clear_up
                        
         pop       {r0, r1, r2, pc}
+
+
 @ Part of button_isr_handler: clears the interrupt for GPIO20
 clear_dn:
         ldr       r0, =msg_half_speed           // enter button pressed message
@@ -178,6 +181,80 @@ exit_clear:
         pop       {r0, r1, r2, pc}
 
 
+//============================================================================================================================================
+register_alarm_isr_handler:
+        push {r0, r1, r2, r3}                      @ save registers
+
+        ldr r0, =alarm_isr_handler
+        ldr r1, =PPB_BASE
+        ldr r2, =M0PLUS_VTOR_OFFSET
+        ldr r2, [r1, r2]                 @  The Timer registers start at a base address of 0x40054000 (defined as TIMER_BASE in SDK).
+        ldr r3, =ALRM_ISR_OFFSET              @  0x10
+        add r2, r2, r3
+        str r0, [r2]
+
+        ldr r1, =PPB_BASE
+        ldr r2, =M0PLUS_NVIC_ICPR_OFFSET
+        add r2, r1, r2
+        ldr r0, =1                              @ 1 for enable
+        str r0, [r2]                            @ clear existing interrupts
+
+        ldr r1, =PPB_BASE
+        ldr r2, =M0PLUS_NVIC_ISER_OFFSET
+        add r2, r1, r2
+        ldr r0, =1                              @ 1 for enable
+        str r0, [r2]                            @ enable alarm interrupt
+        
+        pop {r0, r1, r2, r3}                    @ restore registers
+        bx lr
+
+.thumb_func
+alarm_isr_handler:
+        push      {r0, r1, r2, lr}
+        ldr       r0, =msg_alarm             //alarm triggered msg
+        bl        printf
+       
+        ldr       r1, =lstate  // current flashing instructions
+        ldr       r2, =DFLT_STATE_STOP // if flashing is turned off
+        beq       dont_blink  
+        bl        sub_toggle // otherwise toggle LED    
+                       
+        
+
+dont_blink:
+        ldr       r0, =1     
+        ldr       r1, =TIMER_BASE
+        ldr       r2, =TIMER_INTR_OFFSET     // ARMED Indicates the armed/disarmed status of each alarm. 
+                                // A write to the corresponding ALARMx register arms the alarm.
+                                // Alarms automatically disarm upon firing, but writing ones here
+                                // will disarm immediately without waiting to fire.
+        str       r0, [r1, r2]     //mask the reg to clear interrupt    
+        pop       {r0, r1, r2, pc}
+
+set_alarm_params:
+        movs      r1, #1                                   
+        ldr       r2, =TIMER_BASE
+        ldr       r3, =TIMER_INTE_OFFSET // 0x38 INTE Interrupt Enable
+        adds      r2, r2, r3
+        str       r1, [r2]
+
+        ldr       r2, =TIMER_BASE    
+        ldr       r3, =TIMER_TIMELR_OFFSET  //0x0c TIMELR Read from bits 31:0 of time
+        adds      r2, r2, r3
+        ldr       r1, [r2]
+
+        ldr       r3, =ltimer
+        ldr       r0, [r3]
+        
+        adds      r1, r0, r1            // add designated time delay to the running timer count
+        ldr       r2, =TIMER_BASE
+        ldr       r3, =TIMER_ALARM0_OFFSET //  0x10 ALARM0
+        adds      r2, r2, r3
+        str       r1, [r2]      
+
+        bx        lr              
+//============================================================================================================================================
+
 
 @ Subroutine to toggle the LED GPIO pin value
 sub_toggle:
@@ -198,10 +275,12 @@ led_set_state:
         
 
 .align 4
+msg_start:          .asciz "Beginning...\n"
 msg:                .asciz "Button Interrupt Triggered!\n"
 msg_half_speed:     .asciz "Button GP20 pressed: Halve LED flashing speed\n"
 msg_toggle:         .asciz "Button GP21 pressed: Toggle LED flashing\n"
 msg_double_speed:   .asciz "Button GP22 pressed: Double LED flashing speed\n"
+msg_alarm:          .asciz "ALARM...\n"
 
 
 .data
