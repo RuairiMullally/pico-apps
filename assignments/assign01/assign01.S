@@ -29,6 +29,7 @@
 
 .equ    GPIO_ISR_OFFSET, 0x74         @ GPIO is int #13 (vector table entry 29)
 .equ    ALRM_ISR_OFFSET, 0x40         @ ALARM0 is int #0 (vector table entry 16)
+.equ    PROC0_INTS2_OFFSET, 0x128     @ 0x128 PROC0_INTS2 Interrupt status after masking & forcing for proc0
 
 @ Entry point to the ASM portion of the program
 main_asm:
@@ -39,7 +40,10 @@ main_asm:
         bl      init_buttons
         bl      register_GPIO_isr_handler
 main_loop:
-        wfi
+                                                         
+        bl      sub_toggle
+        movs    r0, #100
+        bl      sleep_ms                    @ Sleep for 100ms to allow button to travel back.
         b       main_loop
 
 init_LED:
@@ -87,31 +91,114 @@ register_GPIO_isr_handler:
         ldr r3, =GPIO_ISR_OFFSET            @ 29 x 4
         add r2, r2, r3
         str r0, [r2]
-        //this stores the address of the button_isr_handler at PPB_BASE + VTOR_OFFSET (get to programmable excpetions)
+        //this stores the address of the button_isr_handler at PPB_BASE + VTOR_OFFSET (get to programmable exceptions)
         // + GPIO interrupt location (0x74)
 
         //enable the button_isr_handler by setting the Nested Vectored Interrupt Controller (NVIC)
         //which controls which interrputs are enabled
+        ldr r1, =PPB_BASE
+        ldr r2, =M0PLUS_NVIC_ICPR_OFFSET
+        add r2, r1, r2
         ldr r0, =1                              @ 1 for enable
         lsls r0, #13                            @  13 IO_IRQ_BANK0 (position of IO enable bank)
-        ldr r2, =M0PLUS_NVIC_ICPR_OFFSET
-        ldr r2, [r1, r2]
         str r0, [r2]                            @ clear existing interrupts
+
+        ldr r1, =PPB_BASE
         ldr r2, =M0PLUS_NVIC_ISER_OFFSET
-        ldr r2, [r1, r2]
+        add r2, r1, r2
+        ldr r0, =1                              @ 1 for enable
+        lsls r0, #13                            @  13 IO_IRQ_BANK0 (position of IO enable bank)
         str r0, [r2]                            @ Interrupt Set Enable Register
         
         pop {r0, r1, r2}                        @ restore registers
         bx lr                                   @ return
 
+.thumb_func
 button_isr_handler:
-
+        push      {r0, r1, r2, lr}
         ldr       r0, =msg             // enter button pressed message
         bl        printf
+       
+        ldr       r1, =IO_BANK0_BASE  //GPIO pin bank base reg
+        ldr       r2, =PROC0_INTS2_OFFSET //  0x128 PROC0_INTS2 Interrupt status after masking & forcing for proc0
+        adds      r3, r1, r2
+        ldr       r0, [r3] 
+
+        //compare interrupt with interrupt masks
+        ldr       r1, =GPIO_BTN_EN_MSK
+        cmp       r0, r1
+        beq       clear_en
+
+        ldr       r1, =GPIO_BTN_DN_MSK
+        cmp       r0, r1
+        beq       clear_dn
+
+        ldr       r1, =GPIO_BTN_UP_MSK
+        cmp       r0, r1
+        beq       clear_up
+                       
+        pop       {r0, r1, r2, pc}
+@ Part of button_isr_handler: clears the interrupt for GPIO20
+clear_dn:
+        ldr       r0, =msg_half_speed           // enter button pressed message
+        bl        printf
+
+        ldr       r0, =GPIO_BTN_DN_MSK          
+        ldr       r1, =IO_BANK0_BASE  //GPIO pin bank base reg
+        ldr       r2, =IO_BANK0_INTR2_OFFSET // IO_BANK0: INTR2 Register where falling edge is located
+        adds      r3, r1, r2
+        str       r0, [r3]     //mask the reg to clear interrupt   
+        b         exit_clear                
+
+@ Part of button_isr_handler: clears the interrupt for GPIO21
+clear_en: 
+        ldr       r0, =msg_toggle             // enter button pressed message
+        bl        printf
+
+        ldr       r0, =GPIO_BTN_EN_MSK          
+        ldr       r1, =IO_BANK0_BASE  //GPIO pin bank base reg
+        ldr       r2, =IO_BANK0_INTR2_OFFSET // IO_BANK0: INTR2 Register where falling edge is located
+        adds      r3, r1, r2
+        str       r0, [r3]     //mask the reg to clear interrupt                   
+        b         exit_clear    
+
+@ Part of button_isr_handler: clears the interrupt for GPIO22
+clear_up:
+        ldr       r0, =msg_double_speed             // enter button pressed message
+        bl        printf
+
+        ldr       r0, =GPIO_BTN_UP_MSK          
+        ldr       r1, =IO_BANK0_BASE  //GPIO pin bank base reg
+        ldr       r2, =IO_BANK0_INTR2_OFFSET // IO_BANK0: INTR2 Register where falling edge is located
+        adds      r3, r1, r2
+        str       r0, [r3]     //mask the reg to clear interrupt                   
+        b         exit_clear    
+
+exit_clear:
+        pop       {r0, r1, r2, pc}
+
+
+
+@ Subroutine to toggle the LED GPIO pin value
+sub_toggle:
+    push    {lr}
+    movs    r0, #GPIO_LED_PIN
+    bl      asm_gpio_get                @ Get current LED state
+    cmp     r0, #LED_VAL_OFF
+    beq     led_set_on
+led_set_off:
+    movs    r1, #LED_VAL_OFF
+    b       led_set_state
+led_set_on:
+    movs    r1, #LED_VAL_ON
+led_set_state:
+    movs    r0, #GPIO_LED_PIN
+    bl      asm_gpio_put
+    pop     {pc}
         
 
 .align 4
-msg:                .asciz "Hello World!\n"
+msg:                .asciz "Button Interrupt Triggered!\n"
 msg_half_speed:     .asciz "Button GP20 pressed: Halve LED flashing speed\n"
 msg_toggle:         .asciz "Button GP21 pressed: Toggle LED flashing\n"
 msg_double_speed:   .asciz "Button GP22 pressed: Double LED flashing speed\n"
