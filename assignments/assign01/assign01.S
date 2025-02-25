@@ -35,16 +35,15 @@
 main_asm:
         ldr     r0, =msg_start
         bl      printf
-
+        @ Initialize LED and Buttons for GPIO
         bl      init_LED                        
         bl      init_buttons
-
+        @ Set the alarm and PIO handlers in the vector tables
         bl      register_GPIO_isr_handler
         bl      register_alarm_isr_handler
-main_loop:
-                                                         
-        bl      set_alarm_params 
-        wfi
+main_loop:                                              
+        bl      set_alarm_params           @ update alarm settings
+        wfi                                @ wait for an alarm to happen
         b       main_loop
 
 init_LED:
@@ -79,7 +78,7 @@ init_buttons:
 
         pop {pc}                           @ Back to main
 
-//============================================================================================================================================
+@============================================================================================================================================
 register_GPIO_isr_handler:
         push {r0, r1, r2}                      @ save registers
 
@@ -114,33 +113,103 @@ register_GPIO_isr_handler:
         pop {r0, r1, r2}                        @ restore registers
         bx lr                                   @ return
 
-.thumb_func
+.thumb_func                                     @ since Cortex M0+ runs in thumb mode
 button_isr_handler:
         push      {r0, r1, r2, lr}
-        ldr       r0, =msg             // enter button pressed message
+        ldr       r0, =msg                      @ enter button pressed message
         bl        printf
        
-        ldr       r1, =IO_BANK0_BASE  //GPIO pin bank base reg
-        ldr       r2, =PROC0_INTS2_OFFSET //  0x128 PROC0_INTS2 Interrupt status after masking & forcing for proc0
+        ldr       r1, =IO_BANK0_BASE            @ GPIO pin bank base reg
+        ldr       r2, =PROC0_INTS2_OFFSET       @  0x128 PROC0_INTS2 Interrupt status after masking & forcing for proc0
         adds      r3, r1, r2
         ldr       r0, [r3] 
 
-        //compare interrupt with interrupt masks
+        @compare interrupt with interrupt masks
         ldr       r1, =GPIO_BTN_EN_MSK
         cmp       r0, r1
-        beq       clear_en
+        beq       enable
 
         ldr       r1, =GPIO_BTN_DN_MSK
         cmp       r0, r1
-        beq       clear_dn
+        beq       half
 
         ldr       r1, =GPIO_BTN_UP_MSK
         cmp       r0, r1
-        beq       clear_up
+        beq       double
                        
         pop       {r0, r1, r2, pc}
 
+@toggle the flashing status of LED
+enable: 
+        ldr       r0, =DFLT_STATE_STRT
+        ldr       r1, =lstate
+        ldr       r1, [r1]
+        cmp       r0, r1
+        beq       turn_off
 
+        ldr       r1, =lstate           //turn on LED
+        ldr       r2, =DFLT_STATE_STRT
+        str       r2, [r1]
+
+        b         clear_en
+
+turn_off:
+        ldr       r1, =lstate           //turn off LED
+        ldr       r2, =DFLT_STATE_STOP
+        str       r2, [r1]
+
+        b         clear_en
+
+@ Half the speed of LED flashing if enabled, otherwise reset to default   
+half: 
+        ldr       r0, =DFLT_STATE_STOP
+        ldr       r1, =lstate
+        ldr       r1, [r1]
+        cmp       r0, r1
+        beq       reset_flashing_half
+
+        ldr       r1, =ltimer
+        ldr       r2, [r1]
+        ldr       r3, =1
+        lsrs      r2, r2, r3 //divide by 2
+        str       r2, [r1]
+        b         clear_dn
+
+reset_flashing_half:
+        ldr       r1, =ltimer           //reset the time
+        ldr       r2, =DFLT_ALARM_TIME
+        str       r2, [r1]
+
+        ldr       r1, =lstate           //reset the enable
+        ldr       r2, =DFLT_STATE_STRT
+        str       r2, [r1]
+        b         clear_dn
+
+@ Double the speed of LED flashing if enabled, otherwise reset to default 
+double: 
+        ldr       r0, =DFLT_STATE_STOP
+        ldr       r1, =lstate
+        ldr       r1, [r1]
+        cmp       r0, r1
+        beq       reset_flashing_double
+
+        ldr       r1, =ltimer
+        ldr       r2, [r1]
+        ldr       r3, =1
+        lsls      r2, r2, r3 //multiply by 2
+        str       r2, [r1]
+        b         clear_up
+
+reset_flashing_double:
+        ldr       r1, =ltimer           //reset the time
+        ldr       r2, =DFLT_ALARM_TIME
+        str       r2, [r1]
+
+        ldr       r1, =lstate           //reset the enable
+        ldr       r2, =DFLT_STATE_STRT
+        str       r2, [r1]
+        b         clear_up
+        
 @ Part of button_isr_handler: clears the interrupt for GPIO20
 clear_dn:
         ldr       r0, =msg_half_speed           // enter button pressed message
@@ -181,15 +250,15 @@ exit_clear:
         pop       {r0, r1, r2, pc}
 
 
-//============================================================================================================================================
+@============================================================================================================================================
 register_alarm_isr_handler:
-        push {r0, r1, r2, r3}                      @ save registers
+        push {r0, r1, r2, r3, lr}               @ save registers
 
         ldr r0, =alarm_isr_handler
         ldr r1, =PPB_BASE
         ldr r2, =M0PLUS_VTOR_OFFSET
-        ldr r2, [r1, r2]                 @  The Timer registers start at a base address of 0x40054000 (defined as TIMER_BASE in SDK).
-        ldr r3, =ALRM_ISR_OFFSET              @  0x10
+        ldr r2, [r1, r2]                        @  The Timer registers start at a base address of 0x40054000 (defined as TIMER_BASE in SDK).
+        ldr r3, =ALRM_ISR_OFFSET                @  0x10
         add r2, r2, r3
         str r0, [r2]
 
@@ -205,8 +274,7 @@ register_alarm_isr_handler:
         ldr r0, =1                              @ 1 for enable
         str r0, [r2]                            @ enable alarm interrupt
         
-        pop {r0, r1, r2, r3}                    @ restore registers
-        bx lr
+        pop {r0, r1, r2, r3, pc}                    @ restore registers
 
 .thumb_func
 alarm_isr_handler:
@@ -215,8 +283,10 @@ alarm_isr_handler:
         bl        printf
        
         ldr       r1, =lstate  // current flashing instructions
+        ldr       r1, [r1]
         ldr       r2, =DFLT_STATE_STOP // if flashing is turned off
-        beq       dont_blink  
+        cmp       r1, r2
+        beq       skip_toggle  
         bl        sub_toggle // otherwise toggle LED    
                        
         
@@ -228,10 +298,19 @@ dont_blink:
                                 // A write to the corresponding ALARMx register arms the alarm.
                                 // Alarms automatically disarm upon firing, but writing ones here
                                 // will disarm immediately without waiting to fire.
+                                
         str       r0, [r1, r2]     //mask the reg to clear interrupt    
         pop       {r0, r1, r2, pc}
 
+@ Added to ensure that LED is off when flashing is toggled to stop.
+skip_toggle:
+        movs    r1, #LED_VAL_OFF
+        movs    r0, #GPIO_LED_PIN
+        bl      asm_gpio_put
+        b       dont_blink
+
 set_alarm_params:
+        push {r0, r1, r2, r3, lr}  
         movs      r1, #1                                   
         ldr       r2, =TIMER_BASE
         ldr       r3, =TIMER_INTE_OFFSET // 0x38 INTE Interrupt Enable
@@ -252,7 +331,7 @@ set_alarm_params:
         adds      r2, r2, r3
         str       r1, [r2]      
 
-        bx        lr              
+        pop {r0, r1, r2, r3, pc}             
 //============================================================================================================================================
 
 
