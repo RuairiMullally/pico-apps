@@ -56,7 +56,7 @@ void asm_gpio_set_irq(uint pin) {
     gpio_set_irq_enabled(pin, GPIO_IRQ_EDGE_FALL, true);
 }
 
-// Main entry point of the application
+// Main entry point of the application RM
 int main() {
     stdio_init_all();              // Initialise all basic IO
     printf("Assignment #1...\n");  // Basic print to console
