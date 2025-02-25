@@ -1,0 +1,4 @@
+[wokwi]
+version = 1
+firmware = '..\..\build\assignments\assign01\assign01.hex'
+elf = '..\..\build\assignments\assign01\assign01.elf'

@@ -1,4 +1,5 @@
 #include "pico/stdlib.h"
+#include <stdio.h>
 
 /**
  * @brief EXAMPLE - BLINK_C
@@ -17,6 +18,8 @@ int main() {
     gpio_init(LED_PIN);
     gpio_set_dir(LED_PIN, GPIO_OUT);
 
+    stdio_init_all();
+
     // Do forever...
     while (true) {
 
@@ -27,6 +30,8 @@ int main() {
         // Toggle the LED off and then sleep for delay period
         gpio_put(LED_PIN, 0);
         sleep_ms(LED_DELAY);
+
+        printf("Blinking!\n");
 
     }
 

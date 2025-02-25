@@ -12,3 +12,4 @@ pico_add_extra_outputs(blink_c)
 
 # Add the URL via pico_set_program_url.
 apps_auto_set_url(blink_c)
+
