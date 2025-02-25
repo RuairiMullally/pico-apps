@@ -35,5 +35,6 @@
         "*.S": "arm",
         "*.h": "c"
     },
-    "cortex-debug.variableUseNaturalFormat": false
+    "cortex-debug.variableUseNaturalFormat": false,
+    "git.ignoreLimitWarning": true
 }
