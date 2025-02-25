@@ -141,6 +141,8 @@ button_isr_handler:
 
 @toggle the flashing status of LED
 enable: 
+        ldr       r0, =msg_toggle             // enter button pressed message
+        bl        printf
         ldr       r0, =DFLT_STATE_STRT
         ldr       r1, =lstate
         ldr       r1, [r1]
@@ -171,8 +173,10 @@ half:
         ldr       r1, =ltimer
         ldr       r2, [r1]
         ldr       r3, =1
-        lsrs      r2, r2, r3 //divide by 2
+        lsls      r2, r2, r3 //divide by 2
         str       r2, [r1]
+        ldr       r0, =msg_half_speed           // enter button pressed message
+        bl        printf
         b         clear_dn
 
 reset_flashing_half:
@@ -196,8 +200,10 @@ double:
         ldr       r1, =ltimer
         ldr       r2, [r1]
         ldr       r3, =1
-        lsls      r2, r2, r3 //multiply by 2
+        lsrs      r2, r2, r3 //multiply by 2
         str       r2, [r1]
+        ldr       r0, =msg_double_speed             // enter button pressed message
+        bl        printf
         b         clear_up
 
 reset_flashing_double:
@@ -208,13 +214,12 @@ reset_flashing_double:
         ldr       r1, =lstate           //reset the enable
         ldr       r2, =DFLT_STATE_STRT
         str       r2, [r1]
+        ldr       r0, =msg_reset_speed             // enter button pressed message
+        bl        printf
         b         clear_up
         
 @ Part of button_isr_handler: clears the interrupt for GPIO20
 clear_dn:
-        ldr       r0, =msg_half_speed           // enter button pressed message
-        bl        printf
-
         ldr       r0, =GPIO_BTN_DN_MSK          
         ldr       r1, =IO_BANK0_BASE  //GPIO pin bank base reg
         ldr       r2, =IO_BANK0_INTR2_OFFSET // IO_BANK0: INTR2 Register where falling edge is located
@@ -224,9 +229,6 @@ clear_dn:
 
 @ Part of button_isr_handler: clears the interrupt for GPIO21
 clear_en: 
-        ldr       r0, =msg_toggle             // enter button pressed message
-        bl        printf
-
         ldr       r0, =GPIO_BTN_EN_MSK          
         ldr       r1, =IO_BANK0_BASE  //GPIO pin bank base reg
         ldr       r2, =IO_BANK0_INTR2_OFFSET // IO_BANK0: INTR2 Register where falling edge is located
@@ -236,9 +238,6 @@ clear_en:
 
 @ Part of button_isr_handler: clears the interrupt for GPIO22
 clear_up:
-        ldr       r0, =msg_double_speed             // enter button pressed message
-        bl        printf
-
         ldr       r0, =GPIO_BTN_UP_MSK          
         ldr       r1, =IO_BANK0_BASE  //GPIO pin bank base reg
         ldr       r2, =IO_BANK0_INTR2_OFFSET // IO_BANK0: INTR2 Register where falling edge is located
@@ -360,6 +359,7 @@ msg_half_speed:     .asciz "Button GP20 pressed: Halve LED flashing speed\n"
 msg_toggle:         .asciz "Button GP21 pressed: Toggle LED flashing\n"
 msg_double_speed:   .asciz "Button GP22 pressed: Double LED flashing speed\n"
 msg_alarm:          .asciz "ALARM...\n"
+msg_reset_speed:    .asciz "Button GP20 or GP22 pressed: Reset LED flashing speed\n"
 
 
 .data
