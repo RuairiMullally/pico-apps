@@ -7,6 +7,9 @@ target_sources(lab05 PRIVATE lab05.c lab05.S)
 # Pull in commonly used features.
 target_link_libraries(lab05 PRIVATE pico_stdlib)
 
+pico_enable_stdio_usb(lab05 0)
+pico_enable_stdio_uart(lab05 1)
+
 # Create map/bin/hex file etc.
 pico_add_extra_outputs(lab05)
 
