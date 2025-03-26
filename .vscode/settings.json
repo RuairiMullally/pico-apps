@@ -20,7 +20,7 @@
         }
     },
     "cmake.configureEnvironment": {
-        "PICO_SDK_PATH": "${env:USERPROFILE}/.pico-sdk/sdk/1.5.1"
+        "PICO_SDK_PATH": "${env:USERPROFILE}/.pico-sdk/sdk/2.1.0"
     },
     "cmake.generator": "NMake Makefiles",
     "cmake.configureOnOpen": true,
